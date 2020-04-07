@@ -1,0 +1,35 @@
+{
+  "name": "warkhosh/route",
+  "type": "library",
+  "description": "Репозиторий для хранения скелета для маршрутов",
+  "keywords": [
+    "php",
+    "basic",
+    "class",
+    "route"
+  ],
+  "minimum-stability": "stable",
+  "license": "MIT",
+  "support": {
+    "email": "ekv.programmer@gmail.com"
+  },
+  "authors": [
+    {
+      "name": "Konstantin Egorov",
+      "email": "ekv.programmer@gmail.com"
+    }
+  ],
+  "repositories": [
+  ],
+  "require": {
+    "php": ">=7.2.0",
+    "ext-mbstring": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "Warkhosh\\Route\\": ""
+    },
+    "files": [
+    ]
+  }
+}
