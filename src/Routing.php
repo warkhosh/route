@@ -4,6 +4,8 @@ namespace Warkhosh\Route;
 
 use Closure;
 use Throwable;
+use Warkhosh\Route\Request\RequestProvider;
+use Warkhosh\Route\Request\RequestProviderInterface;
 
 class Routing
 {
@@ -66,9 +68,9 @@ class Routing
     protected $removeDirectoryIndex = 'index.php';
 
     /**
-     * @var \Warkhosh\Route\Request\RequestProviderInterface
+     * @var RequestProviderInterface
      */
-    private $requestProvider = \Warkhosh\Route\Request\RequestProvider::class;
+    private $requestProvider = RequestProvider::class;
 
     /**
      * Список анонимных функций установленые для отрабатывания перед исполнением метода контроллера
@@ -97,17 +99,23 @@ class Routing
     }
 
     /**
-     * Подготовка класса к работе через сбрасывание всех значений.
+     * Начальная точка группировки всех правил для маршрутов со сбросом текущих значений.
      *
      * @param Closure | null $callback
      * @return void
      */
-    static public function start(?Closure $callback = null)
+    public function start(?Closure $callback = null)
     {
-        $routing = new static();
+        $this->setRequestParts(null);
+
+        $this->method = null;
+        $this->directoryIndex = null;
+        $this->removeDirectoryIndex = 'index.php';
+        $this->requestMethod = $this->requestProvider->getMethod();
+        $this->result = null;
 
         if ($callback instanceof Closure) {
-            $callback($routing);
+            $callback($this);
         }
     }
 
@@ -149,32 +157,6 @@ class Routing
     }
 
     /**
-     * Метод особого выполнения сценария для не отработаного роута
-     *
-     * @param Closure|string $callback
-     * @return void
-     */
-    public function notExecuted($callback = null)
-    {
-        if ($this->getResult() === false && $callback instanceof Closure) {
-            echo call_user_func_array($callback, []);
-        }
-    }
-
-    /**
-     * Метод особого выполнения сценария после отработаного роута
-     *
-     * @param Closure|string $callback
-     * @return void
-     */
-    public function isExecuted($callback = null)
-    {
-        if ($this->getResult() === true && $callback instanceof Closure) {
-            echo call_user_func_array($callback, []);
-        }
-    }
-
-    /**
      * Возращает результат отработки роутинга
      *
      * @return bool
@@ -194,6 +176,59 @@ class Routing
         if (is_null($requestParts) || is_array($requestParts)) {
             $this->requestPart = $requestParts;
         }
+    }
+
+    /**
+     * Группировка над дальнейшими инструкциями
+     *
+     * @param array          $attributes
+     * @param Closure|string $callback
+     * @return void
+     */
+    public function group(array $attributes, $callback = null)
+    {
+        $addPrefix = '';
+        $runGroup = true;
+
+        foreach ($attributes as $key => $row) {
+
+            // если передали префикс, дописываем его всем маршрутам в начале
+            if ($key === "prefix") {
+                $addPrefix = Helper::start("/", $row); // записываем какой префикс прибавили
+                $this->uriPrefix .= $addPrefix;
+            }
+
+            //if ($key === "middleware") {
+            //    if ($row instanceof Closure) {
+            //        $middleware = $row;
+            //    } else {
+            //        $middleware = is_array($row) ? $row : RouteHelper::explode(",", $row, ['']);
+            //    }
+            //
+            //    $middleware = new Middleware($middleware);
+            //    $runGroup = $middleware->trigger()->getResult();
+            //}
+        }
+
+        try {
+            if ($runGroup) {
+                if ($callback instanceof Closure) {
+                    $callback($this);
+                }
+            }
+
+            if (isset($middleware)) {
+                $middleware->terminate();
+                unset($middleware);
+            }
+
+        } catch (Throwable $e) {
+            //Log::warning($e);
+            trigger_error($e->getMessage());
+        }
+
+        // по завершению выполнения группы убираем прибавленый префикс
+        $this->uriPrefix = Helper::getRemoveEnding($addPrefix, $this->uriPrefix);
     }
 
     /**
@@ -528,59 +563,6 @@ class Routing
             $this->setRequestParts($requestPart);
             $this->runController($callback, $options, $args);
         }
-    }
-
-    /**
-     * Группировка над дальнейшими инструкциями
-     *
-     * @param array          $attributes
-     * @param Closure|string $callback
-     * @return void
-     */
-    public function group(array $attributes, $callback = null)
-    {
-        $addPrefix = '';
-        $runGroup = true;
-
-        foreach ($attributes as $key => $row) {
-
-            // если передали префикс, дописываем его всем маршрутам в начале
-            if ($key === "prefix") {
-                $addPrefix = Helper::start("/", $row); // записываем какой префикс прибавили
-                $this->uriPrefix .= $addPrefix;
-            }
-
-            //if ($key === "middleware") {
-            //    if ($row instanceof Closure) {
-            //        $middleware = $row;
-            //    } else {
-            //        $middleware = is_array($row) ? $row : RouteHelper::explode(",", $row, ['']);
-            //    }
-            //
-            //    $middleware = new Middleware($middleware);
-            //    $runGroup = $middleware->trigger()->getResult();
-            //}
-        }
-
-        try {
-            if ($runGroup) {
-                if ($callback instanceof Closure) {
-                    $callback($this);
-                }
-            }
-
-            if (isset($middleware)) {
-                $middleware->terminate();
-                unset($middleware);
-            }
-
-        } catch (Throwable $e) {
-            //Log::warning($e);
-            trigger_error($e->getMessage());
-        }
-
-        // по завершению выполнения группы убираем прибавленый префикс
-        $this->uriPrefix = Helper::getRemoveEnding($addPrefix, $this->uriPrefix);
     }
 
     /**
