@@ -252,4 +252,79 @@ class Helper
 
         return $str;
     }
+
+    /**
+     * Безопасное преобразование строки в указаную кодировку если она таковой не является
+     *
+     * @param string $str      - строка, для которой требуется определить кодировку
+     * @param string $encoding - список возможных кодировок
+     * @return string
+     */
+    static public function getTransformToEncoding($str = '', $encoding = 'UTF-8')
+    {
+        if (! mb_check_encoding($str, $encoding)) {
+            $str = mb_convert_encoding($str, $encoding);
+            $str = @iconv(mb_detect_encoding($str, mb_detect_order(), false), "{$encoding}//IGNORE", $str);
+        }
+
+        return $str;
+    }
+
+    /**
+     * Возвращает протокол с его префиксами для домена.
+     *
+     * @return string
+     */
+    static public function getServerProtocol()
+    {
+        if ((! empty($_SERVER['REQUEST_SCHEME']) && $_SERVER['REQUEST_SCHEME'] == 'https') ||
+            (! empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] == 'on') ||
+            (! empty($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == '443')) {
+            return 'https://';
+        }
+
+        return 'http://';
+    }
+
+    /**
+     * Возвращает имя хоста, на котором выполняется текущий скрипт
+     *
+     * @return string
+     */
+    static public function getServerName()
+    {
+        return isset($_SERVER['SERVER_NAME']) ? $_SERVER['SERVER_NAME'] : '';
+    }
+
+    /**
+     * Возвращает путь текущего запроса
+     *
+     * @param bool $query - флаг для включения\выключения query параметров запроса
+     * @return string
+     */
+    static public function getRequestUri($query = true)
+    {
+        $requestUri = '/';
+
+        if (array_key_exists('REQUEST_URI', $_SERVER)) {
+            $requestUri = (string)$_SERVER['REQUEST_URI'];
+            $requestUri = static::getTransformToEncoding($requestUri, "UTF-8");
+        }
+
+        $requestUri = trim($requestUri, " \t\n\r\0\x0B");
+        $requestUri = trim($requestUri, "\x00..\x1F");
+
+        // дополнительные преобразования плохих значений мы уже делаем и пишем в CMF_REQUEST_URI
+        if (($uri = ltrim($requestUri, "/")) !== $requestUri) {
+            $requestUri = "/{$uri}";
+        }
+
+        if (! $query && $requestUri != '') {
+            // Обязательно прописываем протокол и сервер иначе два первых слеша будут приняты за протокол!
+            $url = static::getServerProtocol() . static::getServerName() . $requestUri;
+            return parse_url($url, PHP_URL_PATH);
+        }
+
+        return $requestUri;
+    }
 }

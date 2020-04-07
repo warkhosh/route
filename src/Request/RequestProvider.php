@@ -2,6 +2,8 @@
 
 namespace Warkhosh\Route\Request;
 
+use Warkhosh\Route\Helper;
+
 class RequestProvider implements RequestProviderInterface
 {
     /**
@@ -52,7 +54,7 @@ class RequestProvider implements RequestProviderInterface
      */
     public function getRequestParts()
     {
-        $requestPath = "/";
+        $requestPath = Helper::getPath(Helper::getRequestUri(false));
         $requestFile = "";
 
         if (! empty($requestFile)) {

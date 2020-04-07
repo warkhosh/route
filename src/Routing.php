@@ -77,22 +77,20 @@ class Routing
 
     public function __construct()
     {
-        // ...
+        if (is_string($this->requestProvider)) {
+            $object = $this->requestProvider;
+            $this->requestProvider = method_exists($object, 'getInstance') ? $object::getInstance() : new $object();
+        }
     }
 
     /**
      * Подготовка класса к работе через сбрасывание всех значений.
      *
-     * @param Closure $callback
+     * @param Closure | null $callback
      */
-    public function start(Closure $callback)
+    public function start(?Closure $callback = null)
     {
         $this->setRequestParts(null);
-
-        if (is_string($this->requestProvider)) {
-            $object = $this->requestProvider;
-            $this->requestProvider = method_exists($object, 'getInstance') ? $object::getInstance() : new $object();
-        }
 
         $this->method = null;
         $this->directoryIndex = null;
@@ -100,7 +98,9 @@ class Routing
         $this->requestMethod = $this->requestProvider->getMethod();
         $this->result = null;
 
-        $callback();
+        if ($callback instanceof Closure) {
+            $callback();
+        }
     }
 
     /**
@@ -598,7 +598,7 @@ class Routing
      * @param array         $args
      * @return int
      */
-    public function beforeController(?string $controllerObject = null, ?string $method = null, array $args = [])
+    public function beforeController($controllerObject = null, ?string $method = null, array $args = [])
     {
         try {
             foreach ($this->beforeControllerEvent as $function) {
