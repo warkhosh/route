@@ -99,22 +99,19 @@ class Routing
     }
 
     /**
-     * Начальная точка группировки всех правил для маршрутов со сбросом текущих значений.
+     * Начальная точка группировки всех правил для маршрутов.
      *
      * @param Closure | null $callback
      * @return void
      */
     public function start(?Closure $callback = null)
     {
-        $this->setRequestParts(null);
-
         $this->method = null;
         $this->directoryIndex = null;
         $this->removeDirectoryIndex = 'index.php';
         $this->requestMethod = $this->requestProvider->getMethod();
         $this->result = null;
         $this->beforeControllerEvent = [];
-        $this->httpErrorHandler = null;
 
         if ($callback instanceof Closure) {
             $callback($this);
