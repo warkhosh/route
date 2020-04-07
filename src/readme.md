@@ -72,6 +72,15 @@ $routing->addBeforeControllerEvent(function($route, $controller, $method, $args)
 });
 ```
 
+Указание перехватчика для HTTP ошибок в маршрутах
+```
+$routing->httpErrorHandler(function($code) {
+    if ($code === 404) {
+        die("Not Found");
+    }
+});
+```
+
 Общий пример использования
 ```
 Warkhosh\Route\Routing::start(function(Routing $route) {

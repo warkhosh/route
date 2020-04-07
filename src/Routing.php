@@ -4,6 +4,7 @@ namespace Warkhosh\Route;
 
 use Closure;
 use Throwable;
+use Warkhosh\Exception\RoutingExceptionInterface;
 use Warkhosh\Route\Request\RequestProvider;
 use Warkhosh\Route\Request\RequestProviderInterface;
 
@@ -80,6 +81,13 @@ class Routing
     protected $beforeControllerEvent = [];
 
     /**
+     * Анонимная функция или название класса для обработки http ошибки
+     *
+     * @var Closure | string
+     */
+    protected $httpErrorHandler;
+
+    /**
      * Защищаем от создания через new Singleton
      */
     public function __construct()
@@ -88,14 +96,6 @@ class Routing
             $object = $this->requestProvider;
             $this->requestProvider = method_exists($object, 'getInstance') ? $object::getInstance() : new $object();
         }
-
-        $this->setRequestParts(null);
-
-        $this->method = null;
-        $this->directoryIndex = null;
-        $this->removeDirectoryIndex = 'index.php';
-        $this->requestMethod = $this->requestProvider->getMethod();
-        $this->result = null;
     }
 
     /**
@@ -113,6 +113,8 @@ class Routing
         $this->removeDirectoryIndex = 'index.php';
         $this->requestMethod = $this->requestProvider->getMethod();
         $this->result = null;
+        $this->beforeControllerEvent = [];
+        $this->httpErrorHandler = null;
 
         if ($callback instanceof Closure) {
             $callback($this);
@@ -169,7 +171,7 @@ class Routing
     /**
      * Устанавливаем новое значение частей текущего запроса
      *
-     * @param array|null $requestParts
+     * @param array | null $requestParts
      */
     protected function setRequestParts(?array $requestParts = [])
     {
@@ -179,10 +181,35 @@ class Routing
     }
 
     /**
+     * Устанавливает обработчик http ошибок
+     *
+     * @param Closure | string $handler
+     * @return Routing
+     */
+    public function httpErrorHandler($handler)
+    {
+        if ($handler instanceof Closure) {
+            $this->httpErrorHandler = $handler;
+
+            return $this;
+        }
+
+        if (is_string($handler) && ! empty($handler)) {
+            $this->httpErrorHandler = $handler;
+
+            return $this;
+        }
+
+        trigger_error("Specify the function or controller to handle HTTP errors");
+
+        return $this;
+    }
+
+    /**
      * Группировка над дальнейшими инструкциями
      *
-     * @param array          $attributes
-     * @param Closure|string $callback
+     * @param array            $attributes
+     * @param Closure | string $callback
      * @return void
      */
     public function group(array $attributes, $callback = null)
@@ -236,9 +263,9 @@ class Routing
      *
      * @note перед запуском идет проверка результата выполнения другого маршрута для избежания наложения сценариев
      *
-     * @param string         $uri
-     * @param Closure|string $callback
-     * @param array          $options
+     * @param string           $uri
+     * @param Closure | string $callback
+     * @param array            $options
      * @return void
      */
     public function any($uri = '', $callback = null, $options = [])
@@ -253,9 +280,9 @@ class Routing
      *
      * @note перед запуском идет проверка результата выполнения другого маршрута для избежания наложения сценариев
      *
-     * @param string         $uri
-     * @param Closure|string $callback
-     * @param array          $options
+     * @param string           $uri
+     * @param Closure | string $callback
+     * @param array            $options
      * @return void
      */
     public function get($uri = '', $callback = null, $options = [])
@@ -272,9 +299,9 @@ class Routing
      *
      * @note перед запуском идет проверка результата выполнения другого маршрута для избежания наложения сценариев
      *
-     * @param string         $uri
-     * @param Closure|string $callback
-     * @param array          $options
+     * @param string           $uri
+     * @param Closure | string $callback
+     * @param array            $options
      * @return void
      */
     public function post($uri = '', $callback = null, $options = [])
@@ -291,9 +318,9 @@ class Routing
      *
      * @note перед запуском идет проверка результата выполнения другого маршрута для избежания наложения сценариев
      *
-     * @param string         $uri
-     * @param Closure|string $callback
-     * @param array          $options
+     * @param string           $uri
+     * @param Closure | string $callback
+     * @param array            $options
      * @return void
      */
     public function getPost($uri = '', $callback = null, $options = [])
@@ -310,8 +337,8 @@ class Routing
      *
      * @note перед запуском идет проверка результата выполнения другого маршрута для избежания наложения сценариев
      *
-     * @param Closure|string $callback
-     * @param array          $options
+     * @param Closure | string $callback
+     * @param array            $options
      */
     public function run($callback = null, $options = [])
     {
@@ -323,9 +350,9 @@ class Routing
     /**
      * Выволняет замыкание или контроллер с параметрами
      *
-     * @param Closure|string $callback
-     * @param array          $options
-     * @param array          $args
+     * @param Closure | string $callback
+     * @param array            $options
+     * @param array            $args
      */
     protected function runController($callback = null, $options = [], $args = [])
     {
@@ -372,13 +399,39 @@ class Routing
             }
 
         } catch (Throwable $e) {
-            // log...
+            $this->log($e);
 
             // Если определено название метода то значит было исклчение в нутри сценария.
             // Отмечаем его как выполненый что-бы не пойти в другие.
             if (isset($method)) {
                 $this->result = true;
                 //drawException($e, false);
+            }
+
+            // Перехватываем исключения маршрута
+            if ($e instanceof RoutingExceptionInterface) {
+                try {
+                    $code = $e->getCode();
+
+                    // передаем код ответа в анонимную функцию
+                    if ($this->httpErrorHandler instanceof Closure) {
+                        $this->httpErrorHandler($code);
+                    }
+
+                    // передаем код ответа в контроллер и вызываем в нем метод Error<code>
+                    if (is_string($this->httpErrorHandler) && method_exists($this->httpErrorHandler, "Error{$code}")) {
+                        call_user_func_array([$this->httpErrorHandler, "Error" . $e->getCode()], []);
+                        $this->result = true;
+
+                    } elseif (is_string($this->httpErrorHandler) && method_exists($this->httpErrorHandler, "Error")) {
+                        call_user_func_array([$this->httpErrorHandler, "Error" . $e->getCode()], []);
+                        $this->result = true;
+
+                    }
+
+                } catch (Throwable $e) {
+                    $this->log($e);
+                }
 
             } else {
                 trigger_error($e->getMessage());
@@ -392,7 +445,7 @@ class Routing
      * @param string $className
      * @param array  $requestPart - текущие части запроса
      * @param array  $args
-     * @return null|string
+     * @return null | string
      */
     protected function getDetectMethod($className, &$requestPart = [], &$args = [])
     {
@@ -476,9 +529,9 @@ class Routing
     }
 
     /**
-     * @param string         $uri
-     * @param Closure|string $callback
-     * @param array          $options
+     * @param string           $uri
+     * @param Closure | string $callback
+     * @param array            $options
      */
     protected function validation($uri = '', $callback = null, $options = [])
     {
@@ -628,5 +681,19 @@ class Routing
         }
 
         return RouteOption::SIGNAL_CONTINUE;
+    }
+
+    /**
+     * Логирование ошибок
+     *
+     * @param mixed|Throwable $arg
+     */
+    public function log($arg = null)
+    {
+        if ($arg instanceof Throwable) {
+            // ...
+        } else {
+            // ...
+        }
     }
 }
