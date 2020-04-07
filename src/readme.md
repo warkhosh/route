@@ -50,9 +50,10 @@ $route->post('/news/{type:num?}', "Application\Admin\Modules\Video\Controller@in
 *Контроллер и выборочные инструкции должы возразать boolean значение для определения результата выполнения*
 ```
 $route->any('/about', function () {
-     echo 'Hello World';
-     
-     return true; // Результат удачного выполнения, обязателен!
+    echo 'Hello World';
+
+    // Если по техническим причинам нужно выйти из процесса или метода контроллера и продолжить работу поиска маршрута
+    return RouteOption::SIGNAL_IGNORE_PROCESS;
 });
 ```
 

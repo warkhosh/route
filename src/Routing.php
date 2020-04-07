@@ -287,6 +287,25 @@ class Routing
     }
 
     /**
+     * Запускает проверку маршрута для типа запроса get или post
+     *
+     * @note перед запуском идет проверка результата выполнения другого маршрута для избежания наложения сценариев
+     *
+     * @param string         $uri
+     * @param Closure|string $callback
+     * @param array          $options
+     * @return void
+     */
+    public function getPost($uri = '', $callback = null, $options = [])
+    {
+        if (is_null($this->result)) {
+            if ($this->requestMethod === 'get' || $this->requestMethod === 'post') {
+                $this->validation($uri, $callback, $options);
+            }
+        }
+    }
+
+    /**
      * Выволняет замыкание или контроллер с параметрами
      *
      * @note перед запуском идет проверка результата выполнения другого маршрута для избежания наложения сценариев
@@ -314,11 +333,12 @@ class Routing
 
         try {
             if ($callback instanceof Closure) {
-                if ($this->beforeController(null, null, $args) === Option::SIGNAL_CONTINUE) {
+                if ($this->beforeController(null, null, $args) === RouteOption::SIGNAL_CONTINUE) {
                     $signal = call_user_func_array($callback, $args);
                 }
 
-                $this->result = true; // отмечаем сценарий маршрута как выполненый для избежания выполнения других
+                // отмечаем сценарий маршрута как выполненый для избежания выполнения других контролеров если явно не получен сигнал продолжать
+                $this->result = isset($signal) && $signal === RouteOption::SIGNAL_IGNORE_PROCESS ? null : true;
 
             } elseif (is_string($callback)) {
                 $part = explode("@", $callback);
@@ -341,11 +361,12 @@ class Routing
                 }
 
                 if (! is_null($method)) {
-                    if ($this->beforeController($class, $method, $args) === Option::SIGNAL_CONTINUE) {
+                    if ($this->beforeController($class, $method, $args) === RouteOption::SIGNAL_CONTINUE) {
                         $signal = call_user_func_array([$class, $method], $args);
                     }
 
-                    $this->result = true; // отмечаем сценарий маршрута как выполненый для избежания выполнения других
+                    // отмечаем сценарий маршрута как выполненый для избежания выполнения других контролеров если явно не получен сигнал продолжать
+                    $this->result = isset($signal) && $signal === RouteOption::SIGNAL_IGNORE_PROCESS ? null : true;
                     $this->method = $method;
                 }
             }
@@ -595,15 +616,15 @@ class Routing
                 // всегда первым параметром передаем класс контроллера за ним метод и аргументы
                 $result = $function($this, $controllerObject, $method, $args);
 
-                if (key_exists($result, Option::$signals)) {
+                if (key_exists($result, RouteOption::$signals)) {
                     return $result;
                 }
             }
 
         } catch (Throwable $e) {
-            return Option::SIGNAL_STOP;
+            return RouteOption::SIGNAL_STOP;
         }
 
-        return Option::SIGNAL_CONTINUE;
+        return RouteOption::SIGNAL_CONTINUE;
     }
 }
