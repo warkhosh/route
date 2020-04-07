@@ -604,6 +604,8 @@ class Routing
     /**
      * Метод (событие) запускает (если указали) задачи перед началом работы контроллера
      *
+     * @note может отрабатывать более одного раза если после него метод по сценарию или контроллер вернет особый статус (RouteOption::SIGNAL_IGNORE_PROCESS)
+     *
      * @param string | null $controllerObject
      * @param string | null $method
      * @param array         $args
