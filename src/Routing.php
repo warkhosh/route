@@ -419,11 +419,11 @@ class Routing
 
                     // передаем код ответа в контроллер и вызываем в нем метод Error<code>
                     if (is_string($this->httpErrorHandler) && method_exists($this->httpErrorHandler, "Error{$code}")) {
-                        call_user_func_array([$this->httpErrorHandler, "Error{$code}"], []);
+                        call_user_func_array([new $this->httpErrorHandler(), "Error{$code}"], []);
                         $this->result = true;
 
                     } elseif (is_string($this->httpErrorHandler) && method_exists($this->httpErrorHandler, "Error")) {
-                        call_user_func_array([$this->httpErrorHandler, "Error"], []);
+                        call_user_func_array([new $this->httpErrorHandler(), "Error"], []);
                         $this->result = true;
 
                     }
