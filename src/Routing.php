@@ -7,6 +7,8 @@ use Throwable;
 
 class Routing
 {
+    private static $instances = [];
+
     /**
      * Список частей (path) текущего запроса
      *
@@ -75,21 +77,16 @@ class Routing
      */
     protected $beforeControllerEvent = [];
 
-    public function __construct()
+    /**
+     * Защищаем от создания через new Singleton
+     */
+    protected function __construct()
     {
         if (is_string($this->requestProvider)) {
             $object = $this->requestProvider;
             $this->requestProvider = method_exists($object, 'getInstance') ? $object::getInstance() : new $object();
         }
-    }
 
-    /**
-     * Подготовка класса к работе через сбрасывание всех значений.
-     *
-     * @param Closure | null $callback
-     */
-    public function start(?Closure $callback = null)
-    {
         $this->setRequestParts(null);
 
         $this->method = null;
@@ -97,9 +94,20 @@ class Routing
         $this->removeDirectoryIndex = 'index.php';
         $this->requestMethod = $this->requestProvider->getMethod();
         $this->result = null;
+    }
+
+    /**
+     * Подготовка класса к работе через сбрасывание всех значений.
+     *
+     * @param Closure | null $callback
+     * @return void
+     */
+    static public function start(?Closure $callback = null)
+    {
+        $routing = new static();
 
         if ($callback instanceof Closure) {
-            $callback();
+            $callback($routing);
         }
     }
 
@@ -557,7 +565,7 @@ class Routing
         try {
             if ($runGroup) {
                 if ($callback instanceof Closure) {
-                    $callback();
+                    $callback($this);
                 }
             }
 

@@ -8,7 +8,7 @@ Namespace: `\Warkhosh\Route`
 
 Подготовка класса к работе через сбрасывание всех значений
 ```
-Warkhosh\Route\Routing\Routing::start(function() { 
+Warkhosh\Route\Routing::start(function(Routing $route) { 
     // code ...
 });
 ```
@@ -16,40 +16,40 @@ Warkhosh\Route\Routing\Routing::start(function() {
 
 Группировка над дальнейшими инструкциями
 ```
-Route::group(["prefix" => '/article'], function() {
+$route->group(["prefix" => '/article'], function(Routing $route) {
     // code ...
 });
 ```
 
 Еще не готово: Группировка с указанием обязательного прохождения дополнительных инструкцией типа `middleware`
 ```
-Route::group(["prefix" => "/article", "middleware" => 'auth'], function() {
+$route->group(["prefix" => "/article", "middleware" => 'auth'], function(Routing $route) {
     // code ...
 });
 ```
 
 Инструкции запросов
 ```
-Route::any('/news', "Application\Admin\Modules\Video\Controller", ['except' => ['create', 'edit', 'update', destroy']]);
-Route::get('/news', "Application\Admin\Modules\Video\Controller", ['only' => ['index']);
-Route::post('/news', "Application\Admin\Modules\Video\Controller@index");
+$route->any('/news', "Application\Admin\Modules\Video\Controller", ['except' => ['create', 'edit', 'update', destroy']]);
+$route->get('/news', "Application\Admin\Modules\Video\Controller", ['only' => ['index']);
+$route->post('/news', "Application\Admin\Modules\Video\Controller@index");
 ```
 
 Передача параметров из урла в контроллер		
 *Передача происходит в порядке расположения переменных*
 ```
-Route::post('/news/{type}/{id:int}/show', "Application\Admin\Modules\Video\Controller@index");
+$route->post('/news/{type}/{id:int}/show', "Application\Admin\Modules\Video\Controller@index");
 ```
 
 Указание необязательного аргумента
 ```
-Route::post('/news/{type:num?}', "Application\Admin\Modules\Video\Controller@index");
+$route->post('/news/{type:num?}', "Application\Admin\Modules\Video\Controller@index");
 ```
 
 Выполнение своей инструкции		
 *Контроллер и выборочные инструкции должы возразать boolean значение для определения результата выполнения*
 ```
-Route::any('/about', function () {
+$route->any('/about', function () {
      echo 'Hello World';
      
      return true; // Результат удачного выполнения, обязателен!
@@ -58,22 +58,22 @@ Route::any('/about', function () {
 
 Инструкция для прямого вызова контроллера
 ```
-Route::run("Application\Admin\Modules\Video\Controller", ['only' => ['index']]);
+$route->run("Application\Admin\Modules\Video\Controller", ['only' => ['index']]);
 ```
 
 Общий пример использования
 ```
-Route::start(function() {
-	Route::group(["prefix" => '/cp/video'], function() {
+Warkhosh\Route\Routing::start(function(Routing $route) {
+	$route->group(["prefix" => '/cp/video'], function(Routing $route) {
 
-		Route::group(["prefix" => '/load'], function() {
-			Route::get('/playlist', "\Application\Admin\Modules\Video\LoadCatalogController@drawPlaylist");
-			Route::get('/catalog/{type}/{project}', "\Application\Admin\Modules\Video\LoadCatalogController@drawCatalog");
+		$route->group(["prefix" => '/load'], function(Routing $route) {
+			$route->get('/playlist', "\Application\Admin\Modules\Video\LoadCatalogController@drawPlaylist");
+			$route->get('/catalog/{type}/{project}', "\Application\Admin\Modules\Video\LoadCatalogController@drawCatalog");
 		});
 
-		Route::any('/', "Application\Admin\Modules\Video\Controller");
+		$route->any('/', "Application\Admin\Modules\Video\Controller");
 	});
 	
-	Route::run("Application\Admin\404\Controller", ['only' => ['index']]);
+	$route->run("Application\Admin\404\Controller@index");
 });
 ```
