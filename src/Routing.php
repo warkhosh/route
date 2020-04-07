@@ -411,20 +411,22 @@ class Routing
             // Перехватываем исключения маршрута
             if ($e instanceof RoutingExceptionInterface) {
                 try {
-                    $code = $e->getCode();
+                    $code = $e->getHttpCode();
 
                     // передаем код ответа в анонимную функцию
                     if ($this->httpErrorHandler instanceof Closure) {
-                        $this->httpErrorHandler($code);
+                        $function = $this->httpErrorHandler;
+                        $function($code);
+                        $this->result = true;
                     }
 
                     // передаем код ответа в контроллер и вызываем в нем метод Error<code>
                     if (is_string($this->httpErrorHandler) && method_exists($this->httpErrorHandler, "Error{$code}")) {
-                        call_user_func_array([$this->httpErrorHandler, "Error" . $e->getCode()], []);
+                        call_user_func_array([$this->httpErrorHandler, "Error{$code}"], []);
                         $this->result = true;
 
                     } elseif (is_string($this->httpErrorHandler) && method_exists($this->httpErrorHandler, "Error")) {
-                        call_user_func_array([$this->httpErrorHandler, "Error" . $e->getCode()], []);
+                        call_user_func_array([$this->httpErrorHandler, "Error"], []);
                         $this->result = true;
 
                     }
