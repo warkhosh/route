@@ -61,6 +61,16 @@ $route->any('/about', function () {
 $route->run("Application\Admin\Modules\Video\Controller", ['only' => ['index']]);
 ```
 
+
+Добавления задачи перед исполнением метода контроллера по текущему сценарию
+```
+$routing->addBeforeControllerEvent(function($route, $controller, $method, $args) {
+    if (! is_null($controller)) {
+        var_dump(["class" => get_class($controller)]);
+    }
+});
+```
+
 Общий пример использования
 ```
 Warkhosh\Route\Routing::start(function(Routing $route) {

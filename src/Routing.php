@@ -82,7 +82,7 @@ class Routing
     /**
      * Защищаем от создания через new Singleton
      */
-    protected function __construct()
+    public function __construct()
     {
         if (is_string($this->requestProvider)) {
             $object = $this->requestProvider;
@@ -593,7 +593,7 @@ class Routing
         try {
             foreach ($this->beforeControllerEvent as $function) {
                 // всегда первым параметром передаем класс контроллера за ним метод и аргументы
-                $result = $function($controllerObject, $method, $args);
+                $result = $function($this, $controllerObject, $method, $args);
 
                 if (key_exists($result, Option::$signals)) {
                     return $result;
